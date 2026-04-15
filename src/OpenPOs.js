@@ -104,13 +104,15 @@ export default function OpenPOs() {
         }
       }
 
-      // Deduplicate: keep only the most recent row per (po_id, sku)
-      const deduped = Object.values(
-        poRows.reduce((acc, row) => {
-          const key = `${row.po_id}:${row.sku}`;
-          if (!acc[key] || (row.synced_at || "") > (acc[key].synced_at || "")) acc[key] = row;
-          return acc;
-        }, {})
+      // Deduplicate: for each po_id, keep only rows from the latest sync batch
+      const latestSync = {};
+      for (const row of poRows) {
+        if ((row.synced_at || "") > (latestSync[row.po_id] || "")) latestSync[row.po_id] = row.synced_at;
+      }
+      const deduped = poRows.filter(row => (row.synced_at || "") === (latestSync[row.po_id] || "")
+        // within same batch, still deduplicate exact (po_id,sku,quantity) duplicates
+      ).filter((row, i, arr) =>
+        arr.findIndex(r => r.po_id === row.po_id && r.sku === row.sku && r.quantity === row.quantity) === i
       );
       const CLOSED = new Set(["Received", "Cancelled", "UNKNOWN"]);
       const withTracking = deduped
