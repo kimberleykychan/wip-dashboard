@@ -89,7 +89,14 @@ export default function POHistory() {
         .select("brightpearl_po_id,tracking_number,tracking_url");
       const trackingMap = {};
       for (const p of (packiyoPOs || [])) {
-        if (p.brightpearl_po_id) trackingMap[p.brightpearl_po_id] = { tracking_number: p.tracking_number, tracking_url: p.tracking_url };
+        if (!p.brightpearl_po_id || !p.tracking_number) continue;
+        const existing = trackingMap[p.brightpearl_po_id];
+        if (existing) {
+          const nums = new Set([...existing.tracking_number.split(/[,\n]+/).map(s => s.trim()), ...p.tracking_number.split(/[,\n]+/).map(s => s.trim())].filter(Boolean));
+          existing.tracking_number = [...nums].join(", ");
+        } else {
+          trackingMap[p.brightpearl_po_id] = { tracking_number: p.tracking_number, tracking_url: p.tracking_url };
+        }
       }
 
       setRows(closed.map(r => ({ ...r, ...(trackingMap[r.po_id] || {}) })));
