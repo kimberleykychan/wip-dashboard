@@ -70,6 +70,14 @@ export default function OpenPOs() {
         from += PAGE;
       }
 
+      const { data: packiyoPOs } = await supabase
+        .from("packiyo_purchase_orders")
+        .select("number,tracking_number,tracking_url");
+      const trackingMap = {};
+      for (const p of (packiyoPOs || [])) {
+        if (p.number) trackingMap[p.number] = { tracking_number: p.tracking_number, tracking_url: p.tracking_url };
+      }
+
       // Deduplicate: keep only the most recent row per (po_id, sku)
       const deduped = Object.values(
         poRows.reduce((acc, row) => {
@@ -78,7 +86,9 @@ export default function OpenPOs() {
           return acc;
         }, {})
       );
-      const open = deduped.filter(r => r.status !== "Received" && r.status !== "Cancelled");
+      const open = deduped
+        .filter(r => r.status !== "Received" && r.status !== "Cancelled")
+        .map(r => ({ ...r, ...(trackingMap[r.po_number] || {}) }));
       setLines(buildOpenPOs(open, grnItems));
       setLoading(false);
     }
@@ -211,8 +221,12 @@ export default function OpenPOs() {
                       : <span style={{ background: "#422006", color: "#fbbf24", padding: "2px 8px", borderRadius: 999, fontSize: 12, fontWeight: 600 }}>On Order</span>
                     }
                   </td>
-                  <td style={{ ...TD, color: "#64748b", fontFamily: "monospace", fontSize: 12 }}>
-                    {r.tracking_number || "—"}
+                  <td style={{ ...TD, fontFamily: "monospace", fontSize: 12 }}>
+                    {r.tracking_number
+                      ? r.tracking_url
+                        ? <a href={r.tracking_url} target="_blank" rel="noreferrer" style={{ color: "#38bdf8", textDecoration: "none" }}>{r.tracking_number}</a>
+                        : <span style={{ color: "#94a3b8" }}>{r.tracking_number}</span>
+                      : <span style={{ color: "#475569" }}>—</span>}
                   </td>
                 </tr>
               );

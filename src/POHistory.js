@@ -22,7 +22,9 @@ export default function POHistory() {
       while (true) {
         const { data } = await supabase
           .from("purchase_orders")
-          .select("po_id,po_number,sku,product_name,option,quantity,order_date,delivery_date,supplier_name")
+          .select("po_id,po_number,sku,product_name,option,quantity,order_date,delivery_date,supplier_name,status")
+          .eq("order_type_code", "PO")
+          .eq("status", "Received")
           .order("po_id")
           .range(from, from + PAGE - 1);
         if (!data || data.length === 0) break;
@@ -63,7 +65,15 @@ export default function POHistory() {
         received: grnMap[`${po.po_id}:${po.sku}`] || 0,
       }));
 
-      setRows(closed);
+      const { data: packiyoPOs } = await supabase
+        .from("packiyo_purchase_orders")
+        .select("number,tracking_number,tracking_url");
+      const trackingMap = {};
+      for (const p of (packiyoPOs || [])) {
+        if (p.number) trackingMap[p.number] = { tracking_number: p.tracking_number, tracking_url: p.tracking_url };
+      }
+
+      setRows(closed.map(r => ({ ...r, ...(trackingMap[r.po_number] || {}) })));
       setLoading(false);
     }
     load();
@@ -174,8 +184,12 @@ export default function POHistory() {
                 <td style={{ ...TD, color: "#34d399", textAlign: "right" }}>{r.received?.toLocaleString()}</td>
                 <td style={{ ...TD, color: "#64748b" }}>{fmtDate(r.order_date)}</td>
                 <td style={{ ...TD, color: "#64748b" }}>{fmtDate(r.delivery_date)}</td>
-                <td style={{ ...TD, color: "#64748b", fontFamily: "monospace", fontSize: 12 }}>
-                  {r.tracking_number || "—"}
+                <td style={{ ...TD, fontFamily: "monospace", fontSize: 12 }}>
+                  {r.tracking_number
+                    ? r.tracking_url
+                      ? <a href={r.tracking_url} target="_blank" rel="noreferrer" style={{ color: "#38bdf8", textDecoration: "none" }}>{r.tracking_number}</a>
+                      : <span style={{ color: "#94a3b8" }}>{r.tracking_number}</span>
+                    : <span style={{ color: "#475569" }}>—</span>}
                 </td>
               </tr>
             ))}
