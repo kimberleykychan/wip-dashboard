@@ -67,13 +67,13 @@ export default function POHistory() {
 
       const { data: packiyoPOs } = await supabase
         .from("packiyo_purchase_orders")
-        .select("number,tracking_number,tracking_url");
+        .select("brightpearl_po_id,tracking_number,tracking_url");
       const trackingMap = {};
       for (const p of (packiyoPOs || [])) {
-        if (p.number) trackingMap[p.number] = { tracking_number: p.tracking_number, tracking_url: p.tracking_url };
+        if (p.brightpearl_po_id) trackingMap[p.brightpearl_po_id] = { tracking_number: p.tracking_number, tracking_url: p.tracking_url };
       }
 
-      setRows(closed.map(r => ({ ...r, ...(trackingMap[r.po_number] || {}) })));
+      setRows(closed.map(r => ({ ...r, ...(trackingMap[r.po_id] || {}) })));
       setLoading(false);
     }
     load();

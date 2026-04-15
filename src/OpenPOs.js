@@ -72,10 +72,10 @@ export default function OpenPOs() {
 
       const { data: packiyoPOs } = await supabase
         .from("packiyo_purchase_orders")
-        .select("number,tracking_number,tracking_url");
+        .select("brightpearl_po_id,tracking_number,tracking_url");
       const trackingMap = {};
       for (const p of (packiyoPOs || [])) {
-        if (p.number) trackingMap[p.number] = { tracking_number: p.tracking_number, tracking_url: p.tracking_url };
+        if (p.brightpearl_po_id) trackingMap[p.brightpearl_po_id] = { tracking_number: p.tracking_number, tracking_url: p.tracking_url };
       }
 
       // Deduplicate: keep only the most recent row per (po_id, sku)
@@ -86,9 +86,10 @@ export default function OpenPOs() {
           return acc;
         }, {})
       );
+      const CLOSED = new Set(["Received", "Cancelled", "Shipped", "UNKNOWN"]);
       const open = deduped
-        .filter(r => r.status !== "Received" && r.status !== "Cancelled")
-        .map(r => ({ ...r, ...(trackingMap[r.po_number] || {}) }));
+        .filter(r => !CLOSED.has(r.status))
+        .map(r => ({ ...r, ...(trackingMap[r.po_id] || {}) }));
       setLines(buildOpenPOs(open, grnItems));
       setLoading(false);
     }
@@ -202,7 +203,6 @@ export default function OpenPOs() {
                 <tr key={i} style={{ background: isOverdue ? "#1c0a0a" : "transparent" }}>
                   <td style={{ ...TD, fontFamily: "monospace", fontSize: 12 }}>
                     <div style={{ color: "#f1f5f9", fontWeight: 700 }}>{r.po_id}</div>
-                    <div style={{ color: "#475569", fontSize: 11 }}>{r.po_number}</div>
                   </td>
                   <td style={{ ...TD, color: "#94a3b8" }}>{r.supplier_name || "—"}</td>
                   <td style={{ ...TD, color: "#f1f5f9" }}>{r.product_name || "—"}</td>
