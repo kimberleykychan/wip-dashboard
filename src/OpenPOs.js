@@ -143,7 +143,8 @@ export default function OpenPOs() {
         (r.po_number     || "").toLowerCase().includes(q) ||
         (r.product_name  || "").toLowerCase().includes(q) ||
         (r.sku           || "").toLowerCase().includes(q) ||
-        (r.supplier_name || "").toLowerCase().includes(q)
+        (r.supplier_name || "").toLowerCase().includes(q) ||
+        String(r.po_id).includes(q)
       )
       .sort((a, b) => {
         const mul = sortDir === "asc" ? 1 : -1;
