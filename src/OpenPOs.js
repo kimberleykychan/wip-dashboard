@@ -105,11 +105,12 @@ export default function OpenPOs() {
           return acc;
         }, {})
       );
-      const CLOSED = new Set(["Received", "Cancelled", "Shipped", "UNKNOWN"]);
-      const open = deduped
+      const CLOSED = new Set(["Received", "Cancelled", "UNKNOWN"]);
+      const withTracking = deduped
         .filter(r => !CLOSED.has(r.status))
         .map(r => ({ ...r, ...(trackingMap[r.po_id] || {}) }));
-      setLines(buildOpenPOs(open, grnItems));
+      const built = buildOpenPOs(withTracking, grnItems);
+      setLines(built.filter(r => r.remaining > 0));
       setLoading(false);
     }
     load();
