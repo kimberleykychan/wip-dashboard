@@ -54,10 +54,12 @@ export default function OpenPOs() {
       const poRows = [];
       let from = 0;
       while (true) {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("purchase_orders")
-          .select("po_id,po_number,sku,product_name,option,quantity,order_date,delivery_date,supplier_name,shipping_status_code,tracking_number")
+          .select("po_id,po_number,sku,product_name,option,quantity,order_date,delivery_date,supplier_name,shipping_status_code")
+          .order("po_id")
           .range(from, from + PAGE - 1);
+        if (error) break;
         if (!data || data.length === 0) break;
         poRows.push(...data);
         if (data.length < PAGE) break;
@@ -67,10 +69,12 @@ export default function OpenPOs() {
       const grnItems = [];
       from = 0;
       while (true) {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("brightpearl_goods_receipt_items")
           .select("po_id,sku,quantity_received")
+          .order("id")
           .range(from, from + PAGE - 1);
+        if (error) break;
         if (!data || data.length === 0) break;
         grnItems.push(...data);
         if (data.length < PAGE) break;

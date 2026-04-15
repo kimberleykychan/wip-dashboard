@@ -22,7 +22,8 @@ export default function POHistory() {
       while (true) {
         const { data } = await supabase
           .from("purchase_orders")
-          .select("po_id,po_number,sku,product_name,option,quantity,order_date,delivery_date,supplier_name,tracking_number")
+          .select("po_id,po_number,sku,product_name,option,quantity,order_date,delivery_date,supplier_name")
+          .order("po_id")
           .range(from, from + PAGE - 1);
         if (!data || data.length === 0) break;
         poRows.push(...data);
