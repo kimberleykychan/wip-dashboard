@@ -4,6 +4,25 @@ import { supabase, fmtDate } from "./supabase";
 const TH = { padding: "8px 12px", color: "#64748b", fontWeight: 600, whiteSpace: "nowrap", textAlign: "left" };
 const TD = { padding: "7px 12px", borderBottom: "1px solid #1e293b" };
 
+function trackingLink(num, url) {
+  const t = num.trim();
+  const href = url || (
+    /^1Z/i.test(t)        ? `https://www.ups.com/track?tracknum=${t}` :
+    /^\d{12,14}$/.test(t) ? `https://www.fedex.com/fedextrack/?trknbr=${t}` :
+    /^\d{10}$/.test(t)    ? `https://www.dhl.com/us-en/home/tracking.html?tracking-id=${t}&submit=1` :
+    null
+  );
+  return href
+    ? <a key={t} href={href} target="_blank" rel="noreferrer" style={{ color: "#38bdf8", textDecoration: "none", display: "block" }}>{t}</a>
+    : <span key={t} style={{ color: "#94a3b8", display: "block" }}>{t}</span>;
+}
+
+function TrackingCell({ tracking_number, tracking_url }) {
+  if (!tracking_number) return <span style={{ color: "#475569" }}>—</span>;
+  const nums = tracking_number.split(/[,\n]+/).map(s => s.trim()).filter(Boolean);
+  return <>{nums.map(n => trackingLink(n, nums.length === 1 ? tracking_url : null))}</>;
+}
+
 export default function POHistory() {
   const [rows, setRows]         = useState([]);
   const [loading, setLoading]   = useState(true);
@@ -185,11 +204,7 @@ export default function POHistory() {
                 <td style={{ ...TD, color: "#64748b" }}>{fmtDate(r.order_date)}</td>
                 <td style={{ ...TD, color: "#64748b" }}>{fmtDate(r.delivery_date)}</td>
                 <td style={{ ...TD, fontFamily: "monospace", fontSize: 12 }}>
-                  {r.tracking_number
-                    ? r.tracking_url
-                      ? <a href={r.tracking_url} target="_blank" rel="noreferrer" style={{ color: "#38bdf8", textDecoration: "none" }}>{r.tracking_number}</a>
-                      : <span style={{ color: "#94a3b8" }}>{r.tracking_number}</span>
-                    : <span style={{ color: "#475569" }}>—</span>}
+                  <TrackingCell tracking_number={r.tracking_number} tracking_url={r.tracking_url} />
                 </td>
               </tr>
             ))}
