@@ -124,8 +124,8 @@ export default function OpenPOs() {
     const q = search.toLowerCase();
     return lines
       .filter(r => {
-        if (filter === "in_transit") return r.in_transit;
-        if (filter === "on_order")   return !r.in_transit;
+        if (filter === "shipped")       return !!r.tracking_number;
+        if (filter === "in_production") return !r.tracking_number;
         if (filter === "overdue")    return r.is_overdue;
         return true;
       })
@@ -164,8 +164,8 @@ export default function OpenPOs() {
         {[
           { label: "Open POs",   value: new Set(lines.map(r => r.po_id)).size,                              color: "#f1f5f9" },
           { label: "Units",      value: lines.reduce((s,r) => s + r.remaining, 0).toLocaleString(),         color: "#38bdf8" },
-          { label: "In Transit", value: lines.filter(r => r.in_transit).length,                             color: "#34d399" },
-          { label: "Overdue",    value: lines.filter(r => r.is_overdue && !r.in_transit).length,            color: lines.filter(r => r.is_overdue && !r.in_transit).length > 0 ? "#f87171" : "#475569" },
+          { label: "Shipped",    value: lines.filter(r => r.tracking_number).length,                        color: "#34d399" },
+          { label: "Overdue",    value: lines.filter(r => r.is_overdue && !r.tracking_number).length,       color: lines.filter(r => r.is_overdue && !r.tracking_number).length > 0 ? "#f87171" : "#475569" },
         ].map(c => (
           <div key={c.label} style={{ background: "#1e293b", borderRadius: 8, padding: "12px 20px", minWidth: 120 }}>
             <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4 }}>{c.label}</div>
@@ -183,10 +183,10 @@ export default function OpenPOs() {
           style={{ background: "#1e293b", color: "#f1f5f9", border: "1px solid #334155", borderRadius: 6, padding: "6px 12px", fontSize: 13, width: 300 }}
         />
         {[
-          { key: "all",        label: "All" },
-          { key: "on_order",   label: "On Order" },
-          { key: "in_transit", label: "In Transit" },
-          { key: "overdue",    label: "Overdue" },
+          { key: "all",           label: "All" },
+          { key: "in_production", label: "In Production" },
+          { key: "shipped",       label: "Shipped" },
+          { key: "overdue",       label: "Overdue" },
         ].map(f => (
           <button key={f.key} onClick={() => setFilter(f.key)} style={{
             padding: "5px 12px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
@@ -217,7 +217,7 @@ export default function OpenPOs() {
           </thead>
           <tbody>
             {filtered.map((r, i) => {
-              const isOverdue   = r.is_overdue && !r.in_transit;
+              const isOverdue = r.is_overdue && !r.tracking_number;
               return (
                 <tr key={i} style={{ background: isOverdue ? "#1c0a0a" : "transparent" }}>
                   <td style={{ ...TD, fontFamily: "monospace", fontSize: 12 }}>
@@ -235,9 +235,9 @@ export default function OpenPOs() {
                     {isOverdue && <span style={{ marginLeft: 6, fontSize: 11 }}>overdue</span>}
                   </td>
                   <td style={TD}>
-                    {r.in_transit
-                      ? <span style={{ background: "#06402b", color: "#34d399", padding: "2px 8px", borderRadius: 999, fontSize: 12, fontWeight: 600 }}>In Transit</span>
-                      : <span style={{ background: "#422006", color: "#fbbf24", padding: "2px 8px", borderRadius: 999, fontSize: 12, fontWeight: 600 }}>On Order</span>
+                    {r.tracking_number
+                      ? <span style={{ background: "#06402b", color: "#34d399", padding: "2px 8px", borderRadius: 999, fontSize: 12, fontWeight: 600 }}>Shipped</span>
+                      : <span style={{ background: "#1e3a5f", color: "#93c5fd", padding: "2px 8px", borderRadius: 999, fontSize: 12, fontWeight: 600 }}>In Production</span>
                     }
                   </td>
                   <td style={{ ...TD, fontFamily: "monospace", fontSize: 12 }}>
