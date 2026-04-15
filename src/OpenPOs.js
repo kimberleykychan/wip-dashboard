@@ -5,9 +5,7 @@ const TH = { padding: "8px 12px", color: "#64748b", fontWeight: 600, whiteSpace:
 const TD = { padding: "7px 12px", borderBottom: "1px solid #1e293b" };
 
 function buildOpenPOs(poRows, grnItems) {
-  const today  = new Date();
-  const sixAgo = new Date();
-  sixAgo.setMonth(sixAgo.getMonth() - 6);
+  const today = new Date();
 
   const grnMap = {};
   for (const g of grnItems) {
@@ -16,28 +14,18 @@ function buildOpenPOs(poRows, grnItems) {
     grnMap[key] = (grnMap[key] || 0) + (g.quantity_received || 0);
   }
 
-  const lines = [];
-  for (const po of poRows) {
-    const delivDate = po.delivery_date ? new Date(po.delivery_date) : null;
-    if (delivDate && delivDate < sixAgo) continue;
-
-    const received  = grnMap[`${po.po_id}:${po.sku}`] || 0;
-    const remaining = (po.quantity || 0) - received;
-    if (remaining <= 0) continue;
-
-    const daysPast = delivDate ? (today - delivDate) / 86400000 : 0;
-    const pctRecvd = po.quantity > 0 ? received / po.quantity : 0;
-    if (daysPast > 30 && pctRecvd >= 0.95) continue;
-
-    lines.push({
+  return poRows.map(po => {
+    const received   = Math.max(0, grnMap[`${po.po_id}:${po.sku}`] || 0);
+    const remaining  = Math.max(0, (po.quantity || 0) - received);
+    const delivDate  = po.delivery_date ? new Date(po.delivery_date) : null;
+    return {
       ...po,
       received,
       remaining,
       is_overdue:  delivDate && delivDate < today,
       in_transit:  po.shipping_status_code === "ASS",
-    });
-  }
-  return lines;
+    };
+  });
 }
 
 export default function OpenPOs() {
@@ -56,7 +44,8 @@ export default function OpenPOs() {
       while (true) {
         const { data, error } = await supabase
           .from("purchase_orders")
-          .select("po_id,po_number,sku,product_name,option,quantity,order_date,delivery_date,supplier_name,shipping_status_code")
+          .select("po_id,po_number,sku,product_name,option,quantity,order_date,delivery_date,supplier_name,shipping_status_code,status,synced_at")
+          .eq("order_type_code", "PO")
           .order("po_id")
           .range(from, from + PAGE - 1);
         if (error) break;
@@ -81,7 +70,16 @@ export default function OpenPOs() {
         from += PAGE;
       }
 
-      setLines(buildOpenPOs(poRows, grnItems));
+      // Deduplicate: keep only the most recent row per (po_id, sku)
+      const deduped = Object.values(
+        poRows.reduce((acc, row) => {
+          const key = `${row.po_id}:${row.sku}`;
+          if (!acc[key] || (row.synced_at || "") > (acc[key].synced_at || "")) acc[key] = row;
+          return acc;
+        }, {})
+      );
+      const open = deduped.filter(r => r.status !== "Received" && r.status !== "Cancelled");
+      setLines(buildOpenPOs(open, grnItems));
       setLoading(false);
     }
     load();
@@ -193,8 +191,8 @@ export default function OpenPOs() {
               return (
                 <tr key={i} style={{ background: isOverdue ? "#1c0a0a" : "transparent" }}>
                   <td style={{ ...TD, fontFamily: "monospace", fontSize: 12 }}>
-                    <div style={{ color: "#f1f5f9", fontWeight: 700 }}>{r.po_number}</div>
-                    <div style={{ color: "#475569", fontSize: 11 }}>#{r.po_id}</div>
+                    <div style={{ color: "#f1f5f9", fontWeight: 700 }}>{r.po_id}</div>
+                    <div style={{ color: "#475569", fontSize: 11 }}>{r.po_number}</div>
                   </td>
                   <td style={{ ...TD, color: "#94a3b8" }}>{r.supplier_name || "—"}</td>
                   <td style={{ ...TD, color: "#f1f5f9" }}>{r.product_name || "—"}</td>
